@@ -35,7 +35,6 @@ def send(message):
             text = tweet["text"].lower()
             if "trump" in text or "maga" in text or "dictator" in text or "impeach" in text or "drain" in text or "swamp" in text or "comey" in text:
                 producer.send('trump', bytes(json.dumps(tweet, indent=6), "ascii"))
-                print("Tweet sent: " + text)
 
 if __name__ == "__main__":
     print("Starting to read tweets")
