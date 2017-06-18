@@ -1,5 +1,6 @@
 import re, csv, string
-from pyspark.sql import Row
+from pyspark import SparkConf, SparkContext
+from pyspark.sql import Row, SparkSession
 from pyspark.sql.functions import rand
 from pyspark.ml import Pipeline
 from pyspark.ml.feature import Tokenizer, StopWordsRemover, HashingTF
@@ -22,16 +23,21 @@ def processTweet(tweet):
     tweet = tweet.strip('\'"')
     return tweet
 
+# Define spark
+conf = SparkConf().setAppName("Sentiment").setMaster("spark://136.145.216.169:7077")
+sc = SparkContext(conf=conf)
+spark = SparkSession.builder.config("spark.sql.warehouse.dir", '/user/hive/warehouse').enableHiveSupport().getOrCreate()
+
 data = sc.textFile(trainingData)
 
 header = data.first()
 rdd = data.filter(lambda row: row != header)
 
 r = rdd.mapPartitions(lambda x: csv.reader(x))
-r = r.map(lambda x: (processTweetText(x[3]), int(x[1])))
+r = r.map(lambda x: (processTweet(x[3]), int(x[1])))
 
 r = r.map(lambda x: Row(sentence=x[0], label=int(x[1])))
-df = spark.createDataFrame(parts).orderBy(rand()).limit(500000)
+df = spark.createDataFrame(r).orderBy(rand()).limit(500000)
 
 tokenizer = Tokenizer(inputCol="sentence", outputCol="words")
 remover = StopWordsRemover(inputCol="words", outputCol="base_words")
