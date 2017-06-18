@@ -1,3 +1,0 @@
-{'timestamp': datetime.datetime(2017, 6, 18, 15, 31, 1, 733660), 'negative': 10, 'positive': 4}
-{'timestamp': datetime.datetime(2017, 6, 18, 15, 32, 31, 172693), 'negative': 8, 'positive': 3}
-{'timestamp': datetime.datetime(2017, 6, 18, 15, 34, 1, 161950), 'negative': 8, 'positive': 4}

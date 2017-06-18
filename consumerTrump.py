@@ -25,7 +25,7 @@ def getSparkSessionInstance(sparkConf):
     return globals()['sparkSessionSingletonInstance']
 
 def consumer():
-    context = StreamingContext(sc, 30) # Change to 300
+    context = StreamingContext(sc, 300)
     dStream = KafkaUtils.createDirectStream(context, ["trump"], {"metadata.broker.list": "localhost:9092"})
     dStream.foreachRDD(p1)
     context.start()
@@ -47,24 +47,25 @@ def insertKeywords(text, spark, time):
         print("No tweets avaliable to insert into hive")
 
 def updateKeywords(spark):
-    keywordsDataFrame = spark.sql("select * from tweets")
-    keywordsRDD = keywordsDataFrame.rdd
-    keywordsRDD = keywordsRDD.filter(lambda x: x["timestamp"] > datetime.now() - timedelta(hours=1))
-    keywordsDataFrame = spark.createDataFrame(keywordsRDD.map(lambda x: Row(sentence=x["sentence"])))
-    global lrModel
-    lrResult = lrModel.transform(keywordsDataFrame)
-    positiveCount = lrResult.where('prediction == 1').count()
-    negativeCount = lrResult.where('prediction == 0').count()
-    time = datetime.now()
-    resultDict = {"positive": positiveCount, "negative": negativeCount, "timestamp": time}
-    f = open('/home/andres.hernandez2/bigdata-project3/out/keywords.txt', 'a')
-    f.write(str(resultDict))
-    f.write("\n")
-    f.close()
-    print("Appended to file")
-    # except:
-    #    print("Exception appending to file")
-    #    pass
+    try:
+        keywordsDataFrame = spark.sql("select * from tweets")
+        keywordsRDD = keywordsDataFrame.rdd
+        keywordsRDD = keywordsRDD.filter(lambda x: x["timestamp"] > datetime.now() - timedelta(hours=1))
+        keywordsDataFrame = spark.createDataFrame(keywordsRDD.map(lambda x: Row(sentence=x["sentence"])))
+        global lrModel
+        lrResult = lrModel.transform(keywordsDataFrame)
+        positiveCount = lrResult.where('prediction == 1').count()
+        negativeCount = lrResult.where('prediction == 0').count()
+        time = datetime.now()
+        resultDict = {"positive": positiveCount, "negative": negativeCount, "timestamp": time}
+        f = open('/home/andres.hernandez2/bigdata-project3/out/keywords.txt', 'a')
+        f.write(str(resultDict))
+        f.write("\n")
+        f.close()
+        print("Appended to file")
+    except:
+        print("Exception appending to file")
+        pass
 
 def p1(time,rdd):
     rdd = rdd.map(lambda x: json.loads(x[1]))
@@ -73,7 +74,7 @@ def p1(time,rdd):
     text = [element["text"] for element in records if "text" in element]
     insertKeywords(text, spark, time)
     global lastKwRefresh
-    if datetime.now() > lastKwRefresh + timedelta(minutes=1): # Run each hour
+    if datetime.now() > lastKwRefresh + timedelta(hours=1): # Run each hour
         updateKeywords(spark)
         lastKwRefresh = datetime.now()
 
