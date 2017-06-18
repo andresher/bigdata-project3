@@ -54,5 +54,8 @@ testSet = splits[1]
 lrModel = pipeline.fit(trainSet)
 lrResult = lrModel.transform(testSet)
 
+testSet.show(truncate=False)
+lrResult.show(truncate=False)
+
 avg = lrResult.where('label == prediction').count() / lrResult.count()
 print(avg)

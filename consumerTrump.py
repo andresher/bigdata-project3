@@ -47,31 +47,30 @@ def insertKeywords(text, spark, time):
         print("No tweets avaliable to insert into hive")
 
 def updateKeywords(spark):
-    try:
-        keywordsDataFrame = spark.sql("select * from tweets")
-        keywordsRDD = keywordsDataFrame.rdd
-        keywordsRDD = keywordsRDD.filter(lambda x: x["timestamp"] > datetime.now() - timedelta(hours=1))
-        keywordsDataFrame = spark.createDataFrame(keywordsRDD.map(lambda x: Row(sentence=x)))
-        global lrModel
-        lrResult = lrModel.transform(keywordsDataFrame)
-        positiveCount = lrResult.where('prediction == 1').count()
-        negativeCount = lrResult.where('prediction == 0').count()
-        time = datetime.now()
-        resultDict = {"positive": positiveCount, "negative": negativeCount, "timestamp": time}
-        f = open('/home/andres.hernandez2/bigdata-project3/out/keywords.txt', 'a')
-        f.write(str(resultDict))
-        f.write("\n")
-        f.close()
-        print("Appended to file")
-    except:
-        print("Exception appending to file")
-        pass
+    keywordsDataFrame = spark.sql("select * from tweets")
+    keywordsRDD = keywordsDataFrame.rdd
+    keywordsRDD = keywordsRDD.filter(lambda x: x["timestamp"] > datetime.now() - timedelta(hours=1))
+    keywordsDataFrame = spark.createDataFrame(keywordsRDD.map(lambda x: Row(sentence=x["sentence"])))
+    global lrModel
+    lrResult = lrModel.transform(keywordsDataFrame)
+    positiveCount = lrResult.where('prediction == 1').count()
+    negativeCount = lrResult.where('prediction == 0').count()
+    time = datetime.now()
+    resultDict = {"positive": positiveCount, "negative": negativeCount, "timestamp": time}
+    f = open('/home/andres.hernandez2/bigdata-project3/out/keywords.txt', 'a')
+    f.write(str(resultDict))
+    f.write("\n")
+    f.close()
+    print("Appended to file")
+    # except:
+    #    print("Exception appending to file")
+    #    pass
 
 def p1(time,rdd):
     rdd = rdd.map(lambda x: json.loads(x[1]))
     records = rdd.collect() #Return a list with tweets
     spark = getSparkSessionInstance(rdd.context.getConf())
-
+    text = [element["text"] for element in records if "text" in element]
     insertKeywords(text, spark, time)
     global lastKwRefresh
     if datetime.now() > lastKwRefresh + timedelta(minutes=1): # Run each hour
@@ -94,7 +93,7 @@ def processTweet(tweet):
     return tweet
 
 if __name__ == "__main__":
-    global lastKwRefresh = None
+    lastKwRefresh = None
 
     # Start training
     print("Training...")
@@ -118,11 +117,10 @@ if __name__ == "__main__":
     splits = df.randomSplit([0.6, 0.4], 223)
     trainSet = splits[0]
     testSet = splits[1]
-    global lrModel = pipeline.fit(trainSet)
+    lrModel = pipeline.fit(trainSet)
 
     # Start predicting
     print("Starting to read tweets...")
     lastKwRefresh = datetime.now()
     print("Startup at", datetime.now())
-    sc = SparkContext(appName="ConsumerTRUMP")
     consumer()
